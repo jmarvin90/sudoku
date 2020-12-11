@@ -33,7 +33,7 @@ class Grid:
     next_blank(self)
         Identifies the 'first' blank (0) coordinate position in the grid when starting 
         from the top left and working left:right through each row. Returns the coordinates 
-        for the next blank coordinate position.
+        for the next blank coordinate position
     """
     
     def __init__(self, grid):
@@ -93,7 +93,7 @@ class Grid:
     def next_blank(self): 
         """Identifies the 'first' blank (0) coordinate position in the grid when 
         starting from the top left and working left:right through each row. 
-        Returns the coordinates for the next blank coordinate position.
+        Returns the coordinates for the next blank coordinate position
         """
 
         for y in range(0, len(self.grid)): 
