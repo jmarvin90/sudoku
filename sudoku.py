@@ -27,7 +27,7 @@ class Grid:
     propose(self, x, y, value)
         Determines the validity for placement of a given value in the provided 
         coordinates according to whether the given value is already in the same
-        row, column, or zone; returns boolean outcome
+        row, column, or zone; returns boolean validity of proposal
     set_value(self, x, y, value)
         Assigns the provided value to the given x, y coordinate position in the grid
     next_blank(self)
