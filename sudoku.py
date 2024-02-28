@@ -1,157 +1,102 @@
-from copy import deepcopy
-from math import sqrt
+from __future__ import annotations
+import math
+import copy
 
 class Grid:
-    """
-    A class to represent a the sudoku grid to be solved.
-    
-    Attributes
-    ----------
-    grid:array
-        array of arrays (rows) comprising the grid
-    x_size:int
-        length of the first row in the grid; depicts the grid zone_width
-    zone_width:int
-        width of the zones (squares) each grid is made up of (e.g. 3 in a 9x9 grid)
-        
-    Methods
-    -------
-    get_columns(self)
-        Returns a transposed version of the grid to enable operations by column 
-        vs. by row
-    get_zone(self, x, y)
-        Identifies the grid 'zone' for a given set of coordinates, and returns values 
-        for all coordinates in that zone as a single contiguous array
-    show(self)
-        Prints the current grid to terminal
-    propose(self, x, y, value)
-        Determines the validity for placement of a given value in the provided 
-        coordinates according to whether the given value is already in the same
-        row, column, or zone; returns boolean validity of proposal
-    set_value(self, x, y, value)
-        Assigns the provided value to the given x, y coordinate position in the grid
-    next_blank(self)
-        Identifies the 'first' blank (0) coordinate position in the grid when starting 
-        from the top left and working left:right through each row. Returns the coordinates 
-        for the next blank coordinate position
-    """
-    
-    def __init__(self, grid):
-        self.grid = grid
-        self.x_size = len(self.grid[0])
-        self.zone_width = int(sqrt(self.x_size))
-        
-    def get_columns(self):
-        """Returns a transposed version of the grid to enable operations by column 
-        vs. by row   
-        """ 
+    def __init__(self, grid: list):
+        self.__grid = grid
+        self.solution = None
 
-        columns = list(zip(*self.grid))
-        return columns
-        
-    def get_zone(self, x, y): 
-        """Identifies the grid 'zone' for a given set of coordinates, and returns values 
-        for all coordinates in that zone as a single contiguous array
-        """
+    def __str__(self) -> None:
+        """String representation of the grid."""
+        rows = []
+        for row in self.grid:
+            rows.append("".join([str(item) for item in row]))
 
-        x_start = int(x/self.zone_width)*self.zone_width
-        y_start = int(y/self.zone_width)*self.zone_width
-        
-        zone = []
-        
-        for i in range(0, self.zone_width): 
-            zone = zone + self.grid[y_start+i][x_start:x_start+self.zone_width]
-        
-        return zone                  
-        
-    def show(self):
-        """Prints the current grid to terminal
-        """
+        return "\n".join(rows)
 
-        for row in self.grid: 
-            print(f"{row}")
-        print("\n")
-            
-    def propose(self, x, y, value):
-        """Determines the validity for placement of a given value in the provided 
-        coordinates according to whether the given value is already in the same
-        row, column, or zone; returns boolean outcome
-        """
+    @property
+    def grid(self) -> list:
+        return self.__grid
 
-        in_row = value in self.grid[y]
-        in_column = value in self.get_columns()[x]
-        in_zone = value in self.get_zone(x, y)
-        return((not in_row) and (not in_column) and (not in_zone))
-        
-    def set_value(self, x, y, value):
-        """Assigns the provided value to the given x, y coordinate position 
-        in the grid
-        """
+    @grid.setter
+    def grid(self, grid: list) -> None:
+        self.__grid = grid
 
-        self.grid[y][x] = value
-        
-    def next_blank(self): 
-        """Identifies the 'first' blank (0) coordinate position in the grid when 
-        starting from the top left and working left:right through each row. 
-        Returns the coordinates for the next blank coordinate position
-        """
+    @property
+    def width(self) -> int:
+        """Return width of the grid."""
+        return len(self.__grid[0])
 
-        for y in range(0, len(self.grid)): 
-            for x in range (0, len(self.grid[y])): 
-                if self.grid[y][x] == 0: 
-                    return {'x':x, 'y':y} 
+    @property
+    def is_solved(self) -> bool:
+        """Check whether the grid has been solved."""
+        if self.solution or not self.next_blank():
+            return True
+
+        return False
+
+    @property
+    def zone_width(self) -> int:
+        """Return the width of each 'zone' in the grid."""
+        return int(math.sqrt(self.width))
+
+    def set_val(self, x:int, y:int, val:int) -> None:
+        """Set the value in the grid at the given coordinates."""
+        self.grid[y][x] = val
+
+    def get_column(self, column_number: int) -> list:
+        """Return values from a specified column as a list."""
+        return [row[column_number] for row in self.__grid]
+
+    def get_zone(self, x: int, y: int) -> list:
+        """Return values from a specified zone as a list of lists."""
+        x_start = (x // self.zone_width) * self.zone_width
+        x_end = x_start + self.zone_width
+
+        y_start = (y // self.zone_width) * self.zone_width
+        y_end = y_start + self.zone_width
+
+        return [
+            row[x_start:x_end] for row in self.__grid[y_start:y_end]
+        ]
+
+    def proposed_number_is_valid(self, x: int, y: int, number: int) -> bool:
+        """Check validity of a specified number in the given coordinates."""
+        in_row = number in self.__grid[y]
+        in_col = number in self.get_column(x)
+        in_zone = any([number in row for row in self.get_zone(x, y)])
+
+        if any([in_row, in_col, in_zone]):
+            return False
+
+        return True
+
+    def next_blank(self) -> tuple:
+        """Find the next (from top left) blank space in the grid."""
+        for y in range(self.width):
+            for x in range(self.width):
+                if self.__grid[y][x] == 0:
+                    return (x, y)
+
         return None
 
-def solve(grid, cycle=0):
-    next_blank = grid.next_blank()
-    if not next_blank: 
-        grid.show()
-        return grid
-    else: 
-        grid2=Grid(deepcopy(grid.grid))
-        for number in range (1, grid.x_size + 1): 
-            if grid.propose(next_blank['x'], next_blank['y'], number): 
-                grid2.set_value(next_blank['x'], next_blank['y'], number)
-                solve(grid2, cycle+1)                	
-                
-                     
+    @staticmethod
+    def solve(grid: Grid, origin: Grid = None) -> Grid:
+        """Update an input grid with the solution."""
 
-"""grid = Grid([
-                [2, 3, 0, 1, 9, 6, 0, 5, 4], 
-                [0, 5, 7, 0, 0, 0, 0, 2, 9], 
-                [0, 1, 0, 5, 7, 2, 0, 0, 0], 
-                [0, 0, 9, 0, 0, 4, 0, 0, 0],
-                [1, 0, 5, 8, 0, 0, 0, 0, 0],
-                [3, 0, 6, 0, 0, 9, 0, 0, 8],
-                [0, 0, 0, 0, 0, 0, 5, 0, 0],
-                [0, 6, 0, 0, 0, 8, 2, 0, 0], 
-                [7, 8, 2, 3, 0, 0, 0, 4, 0]
-            ])"""
-            
-"""grid = Grid([
-                [5, 3, 0, 0, 7, 0, 0, 0, 0], 
-                [6, 0, 0, 1, 9, 5, 0, 0, 0], 
-                [0, 9, 8, 0, 0, 0, 0, 6, 0], 
-                [8, 0, 0, 0, 6, 0, 0, 0, 3], 
-                [4, 0, 0, 8, 0, 3, 0, 0, 1], 
-                [7, 0, 0, 0, 2, 0, 0, 0, 6], 
-                [0, 6, 0, 0, 0, 0, 2, 8, 0], 
-                [0, 0, 0, 4, 1, 9, 0, 0, 5], 
-                [0, 0, 0, 0, 8, 0, 0, 7, 9]
-            ])"""
-            
-grid = Grid([
-                [5, 3, 0, 0, 7, 0, 0, 0, 0], 
-                [6, 0, 0, 1, 9, 5, 0, 0, 0], 
-                [0, 9, 8, 0, 0, 0, 0, 6, 0], 
-                [8, 0, 0, 0, 6, 0, 0, 2, 3], 
-                [4, 2, 0, 8, 5, 3, 7, 9, 1], 
-                [7, 1, 3, 0, 2, 0, 8, 5, 6], 
-                [9, 6, 0, 5, 3, 7, 2, 8, 0], 
-                [2, 8, 7, 4, 1, 9, 6, 3, 5], 
-                [0, 0, 0, 0, 8, 0, 1, 7, 9]
-            ])
-         
-         
-grid.show()
-solve(grid)
+        if not origin:
+            origin = grid
+        
+        if grid.is_solved:
+            origin.grid = grid.grid
+            return True
+
+        for number in range(1, grid.width + 1):
+            if grid.proposed_number_is_valid(*grid.next_blank(), number):
+                new_grid = Grid(copy.deepcopy(grid.grid))
+                new_grid.set_val(*grid.next_blank(), number)
+                if Grid.solve(new_grid, origin):
+                    return True
+
+        return False
