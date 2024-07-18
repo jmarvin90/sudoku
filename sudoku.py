@@ -1,3 +1,4 @@
+from typing import NoReturn
 from __future__ import annotations
 import math
 import copy
@@ -7,7 +8,7 @@ class Grid:
         self.__grid = grid
         self.solution = None
 
-    def __str__(self) -> None:
+    def __str__(self) -> st:
         """String representation of the grid."""
         rows = []
         for row in self.grid:
@@ -20,7 +21,7 @@ class Grid:
         return self.__grid
 
     @grid.setter
-    def grid(self, grid: list) -> None:
+    def grid(self, grid: list) -> NoReturn:
         self.__grid = grid
 
     @property
@@ -41,7 +42,7 @@ class Grid:
         """Return the width of each 'zone' in the grid."""
         return int(math.sqrt(self.width))
 
-    def set_val(self, x:int, y:int, val:int) -> None:
+    def set_val(self, x:int, y:int, val:int) -> NoReturn:
         """Set the value in the grid at the given coordinates."""
         self.grid[y][x] = val
 
@@ -72,7 +73,7 @@ class Grid:
 
         return True
 
-    def next_blank(self) -> tuple:
+    def next_blank(self) -> tuple | None:
         """Find the next (from top left) blank space in the grid."""
         for y in range(self.width):
             for x in range(self.width):
@@ -82,7 +83,7 @@ class Grid:
         return None
 
     @staticmethod
-    def solve(grid: Grid, origin: Grid = None) -> Grid:
+    def solve(grid: Grid, origin: Grid = None) -> bool:
         """Update an input grid with the solution."""
 
         if not origin:
