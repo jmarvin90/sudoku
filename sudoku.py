@@ -1,103 +1,137 @@
-from typing import NoReturn
-from __future__ import annotations
 import math
-import copy
+
+def _to_gridpos(width: int, index: int) -> tuple:
+    return (index % width, index // width)
+	
+def _to_index(width: int, grid_pos: tuple) -> int:
+    x, y = grid_pos
+    return int((width * y) + x)
+	
 
 class Grid:
-    def __init__(self, grid: list):
-        self.__grid = grid
-        self.solution = None
+    def __init__(self, values: list):
+        self.values = values
+        self.width = int(math.sqrt(len(self.values)))
 
-    def __str__(self) -> st:
-        """String representation of the grid."""
-        rows = []
-        for row in self.grid:
-            rows.append("".join([str(item) for item in row]))
-
-        return "\n".join(rows)
-
-    @property
-    def grid(self) -> list:
-        return self.__grid
-
-    @grid.setter
-    def grid(self, grid: list) -> NoReturn:
-        self.__grid = grid
-
-    @property
-    def width(self) -> int:
-        """Return width of the grid."""
-        return len(self.__grid[0])
-
+    def __str__(self) -> str:
+        return "".join(
+            [
+                ", ".join([str(item) for item in self.values[n:n+self.width]]) + "\n"
+                for n in range(0, self.width**2, self.width)
+            ]
+        )
+		
+    def __getitem__(self, pos: tuple) -> int:
+        return self.values[_to_index(self.width, pos)]
+    
+    def __setitem__(self, pos: tuple, val: int) -> None:
+        self.values[_to_index(self.width, pos)] = val
+    
     @property
     def is_solved(self) -> bool:
-        """Check whether the grid has been solved."""
-        if self.solution or not self.next_blank():
-            return True
-
-        return False
-
-    @property
-    def zone_width(self) -> int:
-        """Return the width of each 'zone' in the grid."""
-        return int(math.sqrt(self.width))
-
-    def set_val(self, x:int, y:int, val:int) -> NoReturn:
-        """Set the value in the grid at the given coordinates."""
-        self.grid[y][x] = val
-
-    def get_column(self, column_number: int) -> list:
-        """Return values from a specified column as a list."""
-        return [row[column_number] for row in self.__grid]
-
-    def get_zone(self, x: int, y: int) -> list:
-        """Return values from a specified zone as a list of lists."""
-        x_start = (x // self.zone_width) * self.zone_width
-        x_end = x_start + self.zone_width
-
-        y_start = (y // self.zone_width) * self.zone_width
-        y_end = y_start + self.zone_width
-
-        return [
-            row[x_start:x_end] for row in self.__grid[y_start:y_end]
-        ]
-
-    def proposed_number_is_valid(self, x: int, y: int, number: int) -> bool:
-        """Check validity of a specified number in the given coordinates."""
-        in_row = number in self.__grid[y]
-        in_col = number in self.get_column(x)
-        in_zone = any([number in row for row in self.get_zone(x, y)])
-
-        if any([in_row, in_col, in_zone]):
-            return False
-
-        return True
-
+        """Check whether the grid is solved."""
+        return 0 not in self.values
+		
     def next_blank(self) -> tuple | None:
-        """Find the next (from top left) blank space in the grid."""
-        for y in range(self.width):
-            for x in range(self.width):
-                if self.__grid[y][x] == 0:
-                    return (x, y)
-
+        """Fetch the coordinates for the next blank cell."""
+        if not self.is_solved:
+            return _to_gridpos(self.width, self.values.index(0))
         return None
-
-    @staticmethod
-    def solve(grid: Grid, origin: Grid = None) -> bool:
-        """Update an input grid with the solution."""
-
-        if not origin:
-            origin = grid
+	
+    def get_row(self, num: int) -> list:
+        """Get the contents of a specified row as a list."""
+        row_min = num * self.width
+        row_max = row_min + self.width
+        return self.values[row_min:row_max]
         
-        if grid.is_solved:
-            origin.grid = grid.grid
-            return True
+    def get_col(self, num: int) -> list:
+        """Get the contents of a specified column as a list."""
+        return [
+            self.values[(self.width * val) + num]
+            for val in range(0, self.width)
+        ]
+        
+    def get_zone(self, pos: tuple) -> list:
+        """Get the contents of the 'zone' for a coordinate position."""
+        x, y = pos
+        zone_width = int(math.sqrt(self.width))
+        
+        output = []
+        
+        for row in range(0, zone_width):
+            min_x = x - (x % zone_width)
+            min_y = y - (y % zone_width)  + row
+            index = _to_index(self.width, (min_x, min_y))
+            output.extend(
+                self.values[index:index+zone_width]
+            )
+            
+        return output
+        
+    def placement_is_valid(self, num: int, pos: tuple) -> bool:
+        """Check validity of placement for a number in a given position."""
+        x, y = pos
+        return (
+            self[pos] == 0 and
+            num not in self.get_row(y) and
+            num not in self.get_col(x) and
+            num not in self.get_zone(pos)
+        )
+		
+def solve(grid: Grid) -> Grid:
+    """Update an input grid with the solution."""
+    if grid.is_solved:
+        return grid
 
-        for number in range(1, grid.width + 1):
-            if grid.proposed_number_is_valid(*grid.next_blank(), number):
-                new_grid = Grid(copy.deepcopy(grid.grid))
-                new_grid.set_val(*grid.next_blank(), number)
-                if Grid.solve(new_grid, origin):
-                    return True
+    # Keep a trail of placements we've proposed
+    track = [(grid.next_blank(), 1)]
+    
+    while not grid.is_solved:
+        # Work with the most recent proposed placement
+        pos, num = track[-1]
 
-        return False
+        # Move on to the next blank cell if that placement
+        # is potentially valid
+        if (grid.placement_is_valid(num, pos)):
+            grid[pos] = num
+            track.append((grid.next_blank(), 1))
+            continue
+
+        # Otherwise remove that placement from the track, 
+        # reset the grid cell value and propose the next number
+        track.pop()
+        grid[pos] = 0
+        num += 1
+        if not num > grid.width:
+            track.append((pos, num))
+
+    return grid
+
+        
+my_vals = [
+	2, 3, 0, 1, 9, 6, 0, 5, 4,
+	0, 5, 7, 0, 0, 0, 0, 2, 9,
+	0, 1, 0, 5, 7, 2, 0, 0, 0,
+	0, 0, 9, 0, 0, 4, 0, 0, 0,
+	1, 0, 5, 8, 0, 0, 0, 0, 0,
+	3, 0, 6, 0, 0, 9, 0, 0, 8,
+	0, 0, 0, 0, 0, 0, 5, 0, 0,
+	0, 6, 0, 0, 0, 8, 2, 0, 0,
+	7, 8, 2, 3, 0, 0, 0, 4, 0
+]
+
+"""
+        [2, 3, 8, 1, 9, 6, 7, 5, 4],
+        [6, 5, 7, 4, 8, 3, 1, 2, 9],
+        [9, 1, 4, 5, 7, 2, 8, 6, 3],
+        [8, 2, 9, 6, 1, 4, 3, 7, 5],
+        [1, 4, 5, 8, 3, 7, 6, 9, 2],
+        [3, 7, 6, 2, 5, 9, 4, 1, 8],
+        [4, 9, 3, 7, 2, 1, 5, 8, 6],
+        [5, 6, 1, 9, 4, 8, 2, 3, 7],
+        [7, 8, 2, 3, 6, 5, 9, 4, 1]
+"""
+
+my_grid = Grid(my_vals)
+print(my_grid)
+print(solve(my_grid))
